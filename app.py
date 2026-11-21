@@ -123,11 +123,14 @@ def run(fn, *args, **kwargs):
 
 
 def scroll_to_top() -> None:
+    # Streamlit's chat layout sticks the page to the bottom; pull it back up once it settles.
     components.html("""<script>
-      const d = window.parent.document;
-      d.querySelectorAll('[data-testid="stMain"], section.main, [data-testid="stAppViewContainer"]')
-        .forEach(e => e.scrollTo({top: 0}));
-      window.parent.scrollTo({top: 0});
+      const go = () => {
+        const d = window.parent.document;
+        d.querySelectorAll('[data-testid="stAppScrollToBottomContainer"], .stMain, [data-testid="stMain"]')
+          .forEach(e => e.scrollTo({top: 0}));
+      };
+      [50, 300, 700, 1200].forEach(ms => setTimeout(go, ms));
     </script>""", height=0)
 
 
