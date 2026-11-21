@@ -20,7 +20,7 @@ def test_ui_end_to_end(monkeypatch):
     assert len(at.chat_message) == 3
     at.button(key="finish").click().run()
     assert not at.exception
-    assert any("Concept by concept" in m.value for m in at.markdown)
+    assert any("Marking scheme" in m.value for m in at.markdown)
     at.button(key="again").click().run()
     assert not at.exception
     assert at.text_input(key="topic").value == "Ohm's law"

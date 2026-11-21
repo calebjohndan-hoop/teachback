@@ -16,29 +16,67 @@ st.set_page_config(page_title="TeachBack", page_icon="🎓", layout="wide")
 
 QUICK_TOPICS = ["Ohm's law", "Pointers in C", "How vaccines work", "Supply and demand"]
 STATUS_ICON = {"clear": "✅", "partial": "🟡", "misconception": "❌", "not_covered": "⚪"}
+MARK = {"clear": "✓", "partial": "½", "misconception": "✗", "not_covered": "·"}
 
 st.markdown(
     """
 <style>
-.block-container {padding-top: 4rem; max-width: 1200px;}
-.tb-title {font-size: 3rem !important; font-weight: 800 !important; margin: 0; line-height: 1.2 !important; padding: .1em 0;
-  background: linear-gradient(90deg, #a78bfa, #60a5fa 60%, #34d399);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
-.tb-sub {opacity: .75; margin: .2rem 0 1.4rem; font-size: 1.1rem !important;}
-.tb-card {background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: .8rem;}
-.tb-score {font-size: 3.4rem; font-weight: 800; line-height: 1;}
-.tb-score small {font-size: 1.1rem; opacity: .6; font-weight: 500;}
-.tb-label {text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; opacity: .6; margin-bottom: .35rem;}
-.tb-chip {display: flex; justify-content: space-between; gap: .6rem; align-items: center;
-  padding: .55rem .75rem; border-radius: 10px; margin-bottom: .45rem; border: 1px solid; font-size: .93rem;}
-.tb-chip span.s {font-size: .75rem; opacity: .8; white-space: nowrap;}
-.st-clear {background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.5);}
-.st-partial {background: rgba(251,191,36,.10); border-color: rgba(251,191,36,.5);}
-.st-misconception {background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.55);}
-.st-not_covered {background: rgba(148,163,184,.06); border-color: rgba(148,163,184,.25);}
-.tb-quote {border-left: 3px solid #a78bfa; padding-left: .7rem; opacity: .9; font-style: italic; margin: .3rem 0;}
-.tb-ai {font-size: .78rem; opacity: .65;}
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@600;700&display=swap');
+:root {
+  --paper: #F6F8FB; --ink: #1B2A4A; --ink-soft: #55627D; --rule: #C9D8EE;
+  --red: #C8372D; --green: #2F7D4F; --amber: #B7791F; --hi: #FFF1A6;
+}
+html, body, [class*="st-"], .stMarkdown, button, input, textarea {
+  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
+}
+.block-container {padding-top: 3.5rem; max-width: 1180px;}
+.tb-title {font-size: 2.9rem !important; font-weight: 700 !important; color: var(--ink);
+  letter-spacing: -.02em; line-height: 1.15 !important; margin: 0; padding: .1em 0 0;}
+.tb-title .mark {font-family: 'Caveat', cursive !important; color: var(--red); font-size: .62em;
+  font-weight: 700; margin-left: .35em; display: inline-block; transform: rotate(-6deg) translateY(-.35em);}
+.tb-sub {color: var(--ink-soft); margin: .25rem 0 1.6rem; font-size: 1.1rem !important; max-width: 62ch;}
+.tb-label {color: var(--ink-soft); font-size: .95rem; margin: 0 0 .4rem; font-weight: 700;}
+.tb-card {background: #fff; border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.1rem;
+  margin-bottom: .8rem; border-left: 3px solid var(--red);}
+.tb-card b {color: var(--ink);}
+
+/* the one bold element: a red-pen mark */
+.tb-grade {display: inline-flex; align-items: baseline; gap: .15em; font-family: 'Caveat', cursive !important;
+  color: var(--red); font-size: 4.2rem; line-height: 1; padding: .15em .55em .1em;
+  border: 3px solid var(--red); border-radius: 50% 46% 52% 48% / 55% 50% 50% 45%;
+  transform: rotate(-4deg); margin: .2rem 0 .6rem .3rem;}
+.tb-grade small {font-size: 1.6rem; opacity: .85;}
+.tb-verdict {font-family: 'Caveat', cursive !important; color: var(--red); font-size: 1.9rem; margin: 0 0 .4rem .2rem;}
+.tb-round {color: var(--ink-soft); font-size: .92rem; margin: 0 0 1rem;}
+
+/* marking scheme */
+.tb-row {display: flex; align-items: flex-start; gap: .7rem; padding: .45rem 0; border-bottom: 1px solid var(--rule);}
+.tb-row:last-child {border-bottom: none;}
+.tb-tick {font-family: 'Caveat', cursive !important; font-size: 1.7rem; line-height: 1; width: 1.4rem; text-align: center; flex: none;}
+.tb-row .name {color: var(--ink); font-size: .98rem; line-height: 1.35;}
+.tb-row .state {color: var(--ink-soft); font-size: .82rem;}
+.m-clear .tb-tick {color: var(--green);}
+.m-partial .tb-tick {color: var(--amber);}
+.m-misconception .tb-tick {color: var(--red);}
+.m-misconception .name {text-decoration: underline wavy var(--red); text-underline-offset: 4px;}
+.m-not_covered .tb-tick {color: var(--rule);}
+.m-not_covered .name {color: var(--ink-soft);}
+.tb-new {font-family: 'Caveat', cursive !important; color: var(--red); font-size: 1.05rem; margin-left: .3rem;}
+.tb-evidence {color: var(--ink-soft); font-size: .85rem; margin: .7rem 0 1rem;}
+.tb-quote {background: linear-gradient(180deg, transparent 35%, var(--hi) 35%, var(--hi) 92%, transparent 92%);
+  color: var(--ink); padding: 0 .15em; display: inline; line-height: 1.7;}
+.tb-note {color: var(--ink-soft); font-size: .88rem; margin-top: .2rem;}
+.tb-ai {color: var(--ink-soft); font-size: .85rem; margin-bottom: .6rem;}
+
+/* the exercise-book page for the lesson */
+.st-key-chatbox {background-color: #fff !important;
+  background-image: linear-gradient(90deg, transparent 2.6rem, rgba(200,55,45,.35) 2.6rem, rgba(200,55,45,.35) calc(2.6rem + 1px), transparent calc(2.6rem + 1px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent 1.85rem, var(--rule) 1.85rem, var(--rule) calc(1.85rem + 1px)) !important;
+  border-radius: 6px;}
+[data-testid="stChatMessage"] {background: transparent !important;}
+.stButton button {border-radius: 6px;}
+.stButton button:focus-visible, input:focus-visible {outline: 3px solid #1F4FA8 !important; outline-offset: 2px;}
+@media (max-width: 640px) {.tb-title {font-size: 2.2rem !important;} .tb-grade {font-size: 3.2rem;}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -105,32 +143,34 @@ with st.sidebar:
 
 # ---------- views ----------
 def render_header() -> None:
-    st.markdown('<div class="tb-title">TeachBack</div>', unsafe_allow_html=True)
-    st.markdown('<div class="tb-sub">The fastest way to find out if you really understand something: '
-                'teach it to an AI student who asks the hard questions.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tb-title">TeachBack<span class="mark">✓</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="tb-sub">Teach any topic to an AI student. It asks the hard questions, '
+                'marks your explanation, and shows you exactly what you still need to learn.</div>',
+                unsafe_allow_html=True)
 
 
 def render_setup() -> None:
     left, right = st.columns([3, 2], gap="large")
     with left:
         st.text_input("What will you teach today?", key="topic", max_chars=80,
-                      placeholder="e.g. Pointers in C, Ohm's law, photosynthesis")
+                      placeholder="Pointers in C, Ohm's law, photosynthesis...")
         cols = st.columns(len(QUICK_TOPICS))
         for i, t in enumerate(QUICK_TOPICS):
             cols[i].button(t, key=f"quick_{i}", on_click=set_topic, args=(t,), use_container_width=True)
         st.radio("Level", list(LEVELS), key="level", horizontal=True, index=1,
                  format_func=lambda k: {"school": "School", "college": "College", "advanced": "Advanced"}[k])
         st.slider("Rounds", 3, 10, 6, key="rounds", help="How many times you explain before the lesson ends.")
-        st.toggle("Challenge mode: hide the concept checklist", key="challenge")
+        st.toggle("Challenge mode: hide the marking scheme", key="challenge")
     with right:
-        st.radio("Pick your student", list(PERSONAS), key="persona",
+        st.radio("Your student", list(PERSONAS), key="persona",
                  format_func=lambda k: f"{PERSONAS[k]['emoji']}  {PERSONAS[k]['name']}")
         p = PERSONAS[st.session_state.get("persona", "kid")]
         st.markdown(f'<div class="tb-card">{p["emoji"]} <b>{html.escape(p["name"])}</b><br>'
-                    f'<span style="opacity:.75">{html.escape(p["blurb"])}</span></div>', unsafe_allow_html=True)
+                    f'<span style="color:var(--ink-soft)">{html.escape(p["blurb"])}</span></div>',
+                    unsafe_allow_html=True)
 
     topic = st.session_state.get("topic", "").strip()
-    if st.button("🎓 Start teaching", type="primary", key="start", disabled=not topic):
+    if st.button("Start teaching", type="primary", key="start", disabled=not topic):
         with st.spinner("Your student is finding a seat..."):
             try:
                 st.session_state.session = coach.new_session(
@@ -142,24 +182,34 @@ def render_setup() -> None:
         st.rerun()
 
 
-def render_dashboard(s) -> None:
-    pts = score(s.concepts)
-    st.markdown(f'<div class="tb-card"><div class="tb-label">Understanding meter</div>'
-                f'<div class="tb-score">{pts}<small> / 100</small></div></div>', unsafe_allow_html=True)
-    st.progress(pts / 100)
-    st.caption(f"Round {min(s.rounds_done, s.max_rounds)} of {s.max_rounds}")
-
+def marking_rows(s, with_quotes: bool = False) -> str:
     changed = {cid for cid, _, _ in s.last_changes}
-    chips = []
+    rows = []
     for c in s.concepts:
         hidden = s.challenge and c.status == "not_covered" and not s.finished
-        name = "🔒 Hidden concept" if hidden else html.escape(c.name)
-        flash = " ✨" if c.id in changed else ""
-        tip = html.escape(c.note or c.description) if not hidden else "Explain more to unlock"
-        chips.append(f'<div class="tb-chip st-{c.status}" title="{tip}"><span>{name}{flash}</span>'
-                     f'<span class="s">{STATUS_ICON[c.status]} {STATUS_LABELS[c.status]}</span></div>')
-    st.markdown('<div class="tb-label">Concept map</div>' + "".join(chips), unsafe_allow_html=True)
-    st.caption(f"🔎 Evidence check: {s.verified} quotes verified · {s.rejected} rejected")
+        name = "Hidden until you explain it" if hidden else html.escape(c.name)
+        new = '<span class="tb-new">new</span>' if c.id in changed and not with_quotes else ""
+        tip = "" if hidden else html.escape(c.note or c.description)
+        extra = ""
+        if with_quotes:
+            if c.evidence:
+                extra += f'<div style="margin-top:.25rem"><span class="tb-quote">{html.escape(c.evidence)}</span></div>'
+            if c.note:
+                extra += f'<div class="tb-note">{html.escape(c.note)}</div>'
+        rows.append(f'<div class="tb-row m-{c.status}" title="{tip}"><span class="tb-tick">{MARK[c.status]}</span>'
+                    f'<div><div class="name">{name}{new}</div><div class="state">{STATUS_LABELS[c.status]}</div>'
+                    f'{extra}</div></div>')
+    return "".join(rows)
+
+
+def render_dashboard(s) -> None:
+    pts = score(s.concepts)
+    st.markdown(f'<div class="tb-label">Your mark so far</div>'
+                f'<div class="tb-grade">{pts}<small>/100</small></div>'
+                f'<div class="tb-round">Round {min(s.rounds_done, s.max_rounds)} of {s.max_rounds}</div>'
+                f'<div class="tb-label">Marking scheme</div>{marking_rows(s)}'
+                f'<div class="tb-evidence">{s.verified} quotes checked against your own words, '
+                f'{s.rejected} rejected</div>', unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
     if c1.button("Finish lesson", key="finish", use_container_width=True, disabled=s.rounds_done == 0):
@@ -174,8 +224,8 @@ def render_lesson(s) -> None:
     with right:
         render_dashboard(s)
     with left:
-        st.markdown(f"#### Teaching **{html.escape(s.topic)}** to {persona['emoji']} {persona['name']}")
-        chat = st.container(height=440, border=True)
+        st.markdown(f"#### You're teaching {html.escape(s.topic)} to the {persona['name']} {persona['emoji']}")
+        chat = st.container(height=460, border=True, key="chatbox")
         with chat:
             for t in s.turns:
                 if t.role == "student":
@@ -188,11 +238,11 @@ def render_lesson(s) -> None:
         with chat:
             st.chat_message("user", avatar="🧑‍🏫").markdown(msg)
             with st.chat_message("assistant", avatar=persona["emoji"]):
-                with st.spinner("Thinking about what you said..."):
+                with st.spinner("Marking your explanation..."):
                     try:
                         coach.teacher_turn(get_llm(), s, msg)
                     except LLMError as e:
-                        st.error(f"Couldn't reach the AI, your message wasn't counted. Try again. ({e})")
+                        st.error(f"Your message wasn't counted because the AI didn't respond. Send it again. ({e})")
                         return
         st.rerun()
 
@@ -200,45 +250,40 @@ def render_lesson(s) -> None:
 def render_report(s) -> None:
     persona = PERSONAS[s.persona]
     if s.report is None:
-        with st.spinner("Writing your lesson debrief..."):
+        with st.spinner("Writing your report..."):
             coach.finish(get_llm(), s)
     r = s.report
     pts = score(s.concepts)
-    title, icon = grade(pts)
+    title, _ = grade(pts)
 
     left, right = st.columns([2, 3], gap="large")
     with left:
-        st.markdown(f'<div class="tb-card"><div class="tb-label">Final score · {html.escape(s.topic)}</div>'
-                    f'<div class="tb-score">{pts}<small> / 100</small></div>'
-                    f'<h3 style="margin:.4rem 0 0">{icon} {title}</h3></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tb-label">Final mark for {html.escape(s.topic)}</div>'
+                    f'<div class="tb-grade">{pts}<small>/100</small></div>'
+                    f'<div class="tb-verdict">{title}</div>', unsafe_allow_html=True)
         counts = {k: sum(1 for c in s.concepts if c.status == k) for k in STATUS_LABELS}
         m = st.columns(4)
         m[0].metric("Clear", counts["clear"])
         m[1].metric("Partial", counts["partial"])
         m[2].metric("Wrong", counts["misconception"])
         m[3].metric("Missed", counts["not_covered"])
-        st.markdown(f"**Debrief:** {html.escape(r['summary'])}")
+        st.markdown(f"**Teacher's comment:** {html.escape(r['summary'])}")
         st.markdown("**Next steps**")
         for step in r["next_steps"]:
             st.markdown(f"- {html.escape(step)}")
-        st.download_button("⬇️ Download transcript", transcript_markdown(s, persona["name"]),
+        st.download_button("Download transcript", transcript_markdown(s, persona["name"]),
                            file_name="teachback_session.md", use_container_width=True)
         b1, b2 = st.columns(2)
         b1.button("Teach it again", key="again", on_click=restart_same, use_container_width=True, type="primary")
         b2.button("New topic", key="new", on_click=reset, use_container_width=True)
 
     with right:
-        st.markdown("#### Concept by concept")
-        for c in s.concepts:
-            quote = f'<div class="tb-quote">"{html.escape(c.evidence)}"</div>' if c.evidence else ""
-            note = f'<div style="opacity:.75">{html.escape(c.note)}</div>' if c.note else ""
-            st.markdown(f'<div class="tb-chip st-{c.status}" style="display:block">'
-                        f'<b>{STATUS_ICON[c.status]} {html.escape(c.name)}</b> · '
-                        f'<span class="s">{STATUS_LABELS[c.status]}</span>{quote}{note}</div>',
-                        unsafe_allow_html=True)
+        st.markdown("#### Marking scheme")
+        st.markdown('<div class="tb-ai">Highlighted text is what you actually said.</div>'
+                    + marking_rows(s, with_quotes=True), unsafe_allow_html=True)
         if r["corrections"]:
             st.markdown("#### What to fix")
-            st.markdown('<div class="tb-ai">AI-generated explanations. Double-check against your textbook.</div>',
+            st.markdown('<div class="tb-ai">Written by AI. Check these against your textbook.</div>',
                         unsafe_allow_html=True)
             for x in r["corrections"]:
                 st.markdown(f"**{html.escape(x['concept'])}**: {html.escape(x['correct_idea'])}")
