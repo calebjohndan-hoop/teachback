@@ -66,7 +66,7 @@ st.markdown(
 .tb-source {color: var(--ink-soft); font-size: .88rem; margin: -.4rem 0 .8rem;}
 .stApp [data-testid="stMarkdownContainer"] :is(p, li, strong, em),
 .stApp [data-testid="stMetricValue"], .stApp [data-testid="stMetricLabel"] p,
-.stApp [data-testid="stCaptionContainer"], .stApp [data-testid="stFileUploader"] * {
+.stApp [data-testid="stCaptionContainer"], .stApp [data-testid="stFileUploaderDropzoneInstructions"] span {
   font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;}
 .stApp [data-testid="stMetricValue"] {color: var(--ink);}
 .m-not_covered .name {color: var(--ink-soft);}
