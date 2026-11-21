@@ -9,7 +9,7 @@ import time
 
 log = logging.getLogger("teachback")
 
-DEFAULT_MODEL = "gemini-flash-latest"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"  # fast; falls back automatically if retired or busy
 
 _RESOLVED: dict[str, str] = {}  # wanted model -> model that actually worked
 _AVAILABLE: list[str] | None = None
@@ -43,13 +43,12 @@ def pick_model(available: list[str], wanted: str) -> str:
     """Use the requested model if it exists, else the newest general-purpose Flash."""
     if wanted in available:
         return wanted
-    if "gemini-flash-latest" in available:
-        return "gemini-flash-latest"
-    skip = ("lite", "image", "tts", "audio", "live", "embedding", "thinking", "8b")
+    skip = ("image", "tts", "audio", "live", "embedding", "thinking", "8b")
     flash = [n for n in available if "flash" in n and not any(s in n for s in skip)]
     if not flash:
         return wanted
-    flash.sort(key=lambda n: (_version(n), "preview" not in n and "exp" not in n), reverse=True)
+    # Lite models answer in about a second and are rarely overloaded, so prefer them.
+    flash.sort(key=lambda n: ("lite" in n, _version(n), "preview" not in n and "exp" not in n), reverse=True)
     return flash[0]
 
 
@@ -59,7 +58,7 @@ class GeminiLLM:
         from google.genai import types
 
         self._types = types
-        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=30_000))
+        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=15_000))
         wanted = model or DEFAULT_MODEL
         self.model = _RESOLVED.get(wanted, wanted)
         self._wanted = wanted

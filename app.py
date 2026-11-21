@@ -5,7 +5,6 @@ import html
 import os
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 import coach
 from engine import STATUS_LABELS, grade, score, transcript_markdown
@@ -124,14 +123,14 @@ def run(fn, *args, **kwargs):
 
 def scroll_to_top() -> None:
     # Streamlit's chat layout sticks the page to the bottom; pull it back up once it settles.
-    components.html("""<script>
+    st.iframe("""<script>
       const go = () => {
         const d = window.parent.document;
         d.querySelectorAll('[data-testid="stAppScrollToBottomContainer"], .stMain, [data-testid="stMain"]')
           .forEach(e => e.scrollTo({top: 0}));
       };
       [50, 300, 700, 1200].forEach(ms => setTimeout(go, ms));
-    </script>""", height=0)
+    </script>""", height=1)
 
 
 def start_session(session) -> None:

@@ -105,8 +105,8 @@ def test_pick_model_falls_back_to_newest_flash():
     avail = ["gemini-2.0-flash", "gemini-3-flash-preview", "gemini-3-flash", "gemini-3-flash-lite",
              "gemini-3-pro", "gemini-2.5-flash-image"]
     assert pick_model(avail, "gemini-3-pro") == "gemini-3-pro"
-    assert pick_model(avail, "gemini-2.5-flash") == "gemini-3-flash"
-    assert pick_model(avail + ["gemini-flash-latest"], "nope") == "gemini-flash-latest"
+    assert pick_model(avail, "gemini-2.5-flash") == "gemini-3-flash-lite"
+    assert pick_model(["gemini-3-flash", "gemini-2-flash"], "nope") == "gemini-3-flash"
     assert pick_model([], "x") == "x"
 
 
