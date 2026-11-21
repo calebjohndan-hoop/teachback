@@ -140,6 +140,18 @@ def test_quotes_joined_with_ellipsis_only_pass_if_every_piece_is_real():
     assert not verify_quote("bulb ... linear ... holds ... graph", src)                   # glued single words
 
 
+def test_orphaned_message_is_merged_not_lost():
+    llm = MockLLM()
+    s = coach.new_session(llm, "Ohm's law", "kid", "college", 6)
+    s.turns.append(Turn("teacher", "Current is the flow of charge."))  # its reply never arrived
+    coach.teacher_turn(llm, s, "Voltage is the push on the charge.")
+    teacher = [t for t in s.turns if t.role == "teacher"]
+    assert len(teacher) == 1 and "flow of charge" in teacher[0].text and "Voltage" in teacher[0].text
+    assert s.turns[-1].role == "student"
+    coach.teacher_turn(llm, s, "Resistance opposes current.")  # normal turn after that
+    assert [t.role for t in s.turns[-2:]] == ["teacher", "student"]
+
+
 def test_same_quote_never_earns_extra_credit_twice():
     from engine import apply_bonus
     s = make_session(("partial", 3))

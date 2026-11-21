@@ -92,7 +92,7 @@ python -m pip install pytest reportlab
 python -m pytest -q
 ```
 
-23 tests cover scoring, quote verification (including short formulas like `V = IR`), extra credit, blocking attempts to game the marks, re-teach, reading PDF and text notes, model fallback, the offline backup brain, malformed AI output, progress tracking, and a full click-through of the UI.
+24 tests cover scoring, quote verification (including short formulas like `V = IR`), extra credit, blocking attempts to game the marks, re-teach, reading PDF and text notes, model fallback, the offline backup brain, malformed AI output, progress tracking, and a full click-through of the UI.
 
 ## Project structure
 

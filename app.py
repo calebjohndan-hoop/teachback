@@ -186,6 +186,7 @@ def set_topic(t: str) -> None:
 def reset() -> None:
     st.session_state.pop("session", None)
     st.session_state.pop("degraded", None)
+    st.session_state.pop("pending_msg", None)
 
 
 def restart_same() -> None:
@@ -338,7 +339,8 @@ def render_dashboard(s) -> None:
                 + '</div>', unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
-    if c1.button("Finish lesson", key="finish", use_container_width=True, disabled=s.rounds_done == 0):
+    busy = bool(st.session_state.get("pending_msg"))
+    if c1.button("Finish lesson", key="finish", use_container_width=True, disabled=s.rounds_done == 0 or busy):
         s.finished = True
         st.rerun()
     c2.button("Start over", key="restart", on_click=reset, use_container_width=True)
@@ -363,17 +365,27 @@ def render_lesson(s) -> None:
                 else:
                     st.chat_message("user", avatar="🧑‍🏫").markdown(t.text)
 
-    msg = st.chat_input("Explain it to your student...", max_chars=coach.MAX_MESSAGE, key="chat")
-    if msg:
+    # Two-step send: store the message, rerun with the input locked, then mark it.
+    # This stops a second message (or Finish) from cutting the first one off mid-reply.
+    pending = st.session_state.get("pending_msg")
+    msg = st.chat_input("Your student is thinking..." if pending else "Explain it to your student...",
+                        max_chars=coach.MAX_MESSAGE, key="chat", disabled=bool(pending))
+    if msg and not pending:
+        st.session_state.pending_msg = msg
+        st.rerun()
+    if pending:
         with chat:
-            st.chat_message("user", avatar="🧑‍🏫").markdown(msg)
+            if not (s.turns and s.turns[-1].role == "teacher" and s.turns[-1].text.endswith(pending)):
+                st.chat_message("user", avatar="🧑‍🏫").markdown(pending)
             with st.chat_message("assistant", avatar=persona["emoji"]):
                 with st.spinner("Marking your explanation..."):
                     try:
-                        run(coach.teacher_turn, s, msg)
+                        run(coach.teacher_turn, s, pending)
                     except LLMError as e:
+                        st.session_state.pending_msg = None
                         st.error(f"Your message wasn't counted because the AI didn't respond. Send it again. ({e})")
                         return
+        st.session_state.pending_msg = None
         st.rerun()
 
 

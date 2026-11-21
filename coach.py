@@ -128,7 +128,15 @@ def teacher_turn(llm, session: Session, message: str) -> None:
     message = message.strip()[:MAX_MESSAGE]
     if not message or session.finished:
         return
-    session.turns.append(Turn("teacher", message))
+    if session.turns and session.turns[-1].role == "teacher":
+        # The previous message never got a reply (its run was cut short). Merge, don't orphan it.
+        prev = session.turns[-1].text
+        if message != prev and not prev.endswith(message):
+            session.turns[-1].text = prev + "\n\n" + message
+        undo = lambda: setattr(session.turns[-1], "text", prev)
+    else:
+        session.turns.append(Turn("teacher", message))
+        undo = session.turns.pop
     if looks_like_gaming(message):
         # Not graded at all: the examiner never sees it, so it can't be talked into free marks.
         session.blocked += 1
@@ -141,7 +149,7 @@ def teacher_turn(llm, session: Session, message: str) -> None:
     try:
         result = llm.json("evaluate", *P.evaluate_prompt(session), context=ctx)
     except LLMError:
-        session.turns.pop()  # let the user resend the same message
+        undo()  # let the user resend the same message
         raise
     before = session.rejected
     claimed = {str(i.get("id")): i.get("evidence") for i in result.get("concepts", []) if isinstance(i, dict)} \
