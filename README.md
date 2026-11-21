@@ -46,7 +46,7 @@ set GEMINI_API_KEY=your-key-here
 streamlit run app.py
 ```
 
-Get a free key at https://aistudio.google.com/apikey. You can also paste the key in the app's sidebar instead of setting it. Change the model in the sidebar or with `GEMINI_MODEL` (default `gemini-3.0-flash`).
+Get a free key at https://aistudio.google.com/apikey. You can also paste the key in the app's sidebar instead of setting it. Change the model in the sidebar or with `GEMINI_MODEL` (default `gemini-flash-latest`; if a model is retired the app automatically switches to the newest available Flash model).
 
 ## Deploy (Streamlit Community Cloud)
 

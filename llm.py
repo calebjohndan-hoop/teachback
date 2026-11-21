@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import re
 
-DEFAULT_MODEL = "gemini-3.0-flash"
+DEFAULT_MODEL = "gemini-flash-latest"
+
+_RESOLVED: dict[str, str] = {}  # wanted model -> model that actually exists
 
 
 class LLMError(Exception):
@@ -25,6 +27,25 @@ def parse_json(text: str) -> dict:
         raise
 
 
+def _version(name: str) -> float:
+    m = re.search(r"gemini-(\d+(?:\.\d+)?)", name)
+    return float(m.group(1)) if m else 0.0
+
+
+def pick_model(available: list[str], wanted: str) -> str:
+    """Use the requested model if it exists, else the newest general-purpose Flash."""
+    if wanted in available:
+        return wanted
+    if "gemini-flash-latest" in available:
+        return "gemini-flash-latest"
+    skip = ("lite", "image", "tts", "audio", "live", "embedding", "thinking", "8b")
+    flash = [n for n in available if "flash" in n and not any(s in n for s in skip)]
+    if not flash:
+        return wanted
+    flash.sort(key=lambda n: (_version(n), "preview" not in n and "exp" not in n), reverse=True)
+    return flash[0]
+
+
 class GeminiLLM:
     def __init__(self, api_key: str, model: str = DEFAULT_MODEL):
         from google import genai
@@ -32,7 +53,23 @@ class GeminiLLM:
 
         self._types = types
         self._client = genai.Client(api_key=api_key)
-        self.model = model or DEFAULT_MODEL
+        self.model = self._resolve(model or DEFAULT_MODEL)
+
+    def _resolve(self, wanted: str) -> str:
+        if wanted in _RESOLVED:
+            return _RESOLVED[wanted]
+        try:
+            names = []
+            for m in self._client.models.list():
+                actions = getattr(m, "supported_actions", None) or []
+                if actions and "generateContent" not in actions:
+                    continue
+                names.append((m.name or "").removeprefix("models/"))
+            chosen = pick_model(names, wanted) if names else wanted
+        except Exception:  # noqa: BLE001 - listing is best effort
+            return wanted
+        _RESOLVED[wanted] = chosen
+        return chosen
 
     def _call(self, system: str, prompt: str, temperature: float, as_json: bool) -> str:
         config = self._types.GenerateContentConfig(

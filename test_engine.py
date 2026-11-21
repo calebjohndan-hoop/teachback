@@ -98,3 +98,13 @@ def test_full_lesson_with_offline_brain():
     report = coach.finish(llm, s)
     assert report["corrections"] and report["next_steps"]
     assert 0 < score(s.concepts) < 100
+
+
+def test_pick_model_falls_back_to_newest_flash():
+    from llm import pick_model
+    avail = ["gemini-2.0-flash", "gemini-3-flash-preview", "gemini-3-flash", "gemini-3-flash-lite",
+             "gemini-3-pro", "gemini-2.5-flash-image"]
+    assert pick_model(avail, "gemini-3-pro") == "gemini-3-pro"
+    assert pick_model(avail, "gemini-2.5-flash") == "gemini-3-flash"
+    assert pick_model(avail + ["gemini-flash-latest"], "nope") == "gemini-flash-latest"
+    assert pick_model([], "x") == "x"
