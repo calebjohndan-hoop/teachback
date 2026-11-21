@@ -20,8 +20,8 @@ STATUS_ICON = {"clear": "✅", "partial": "🟡", "misconception": "❌", "not_c
 st.markdown(
     """
 <style>
-.block-container {padding-top: 2rem; max-width: 1200px;}
-.tb-title {font-size: 2.6rem; font-weight: 800; margin-bottom: 0;
+.block-container {padding-top: 4rem; max-width: 1200px;}
+.tb-title {font-size: 2.6rem; font-weight: 800; margin: 0; line-height: 1.25; padding: .15em 0;
   background: linear-gradient(90deg, #a78bfa, #60a5fa 60%, #34d399);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
 .tb-sub {opacity: .75; margin-top: .2rem; font-size: 1.05rem;}
@@ -175,15 +175,17 @@ def render_lesson(s) -> None:
         render_dashboard(s)
     with left:
         st.markdown(f"#### Teaching **{html.escape(s.topic)}** to {persona['emoji']} {persona['name']}")
-        for t in s.turns:
-            if t.role == "student":
-                st.chat_message("assistant", avatar=persona["emoji"]).markdown(t.text)
-            else:
-                st.chat_message("user", avatar="🧑‍🏫").markdown(t.text)
+        chat = st.container(height=440, border=True)
+        with chat:
+            for t in s.turns:
+                if t.role == "student":
+                    st.chat_message("assistant", avatar=persona["emoji"]).markdown(t.text)
+                else:
+                    st.chat_message("user", avatar="🧑‍🏫").markdown(t.text)
 
     msg = st.chat_input("Explain it to your student...", max_chars=coach.MAX_MESSAGE, key="chat")
     if msg:
-        with left:
+        with chat:
             st.chat_message("user", avatar="🧑‍🏫").markdown(msg)
             with st.chat_message("assistant", avatar=persona["emoji"]):
                 with st.spinner("Thinking about what you said..."):
