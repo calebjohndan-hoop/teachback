@@ -26,7 +26,7 @@ st.markdown(
   --paper: #F6F8FB; --ink: #1B2A4A; --ink-soft: #55627D; --rule: #C9D8EE;
   --red: #C8372D; --green: #2F7D4F; --amber: #B7791F; --hi: #FFF1A6;
 }
-html, body, [class*="st-"], .stMarkdown, button, input, textarea {
+.stApp, .stApp p, .stApp label, .stApp input, .stApp textarea, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp li {
   font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
 }
 .block-container {padding-top: 3.5rem; max-width: 1180px;}
