@@ -56,10 +56,11 @@ class GeminiLLM:
         from google.genai import types
 
         self._types = types
-        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=45_000))
+        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=60_000))
         wanted = model or DEFAULT_MODEL
         self.model = _RESOLVED.get(wanted, wanted)
         self._wanted = wanted
+        self._no_thinking_cfg = False
 
     def _resolve(self) -> bool:
         """Called only when the model is missing: switch to one that exists."""
@@ -80,17 +81,31 @@ class GeminiLLM:
         self.model = _RESOLVED[self._wanted] = chosen
         return True
 
+    def _thinking(self):
+        """Keep reasoning short: TeachBack needs quick, simple replies."""
+        if self._no_thinking_cfg:
+            return None
+        lvl = "MINIMAL" if "MINIMAL" in self._types.ThinkingLevel.__members__ else "LOW"
+        return self._types.ThinkingConfig(thinking_level=lvl)
+
     def _call(self, system: str, prompt: str, temperature: float, as_json: bool) -> str:
         config = self._types.GenerateContentConfig(
             system_instruction=system,
             temperature=temperature,
             response_mime_type="application/json" if as_json else "text/plain",
+            thinking_config=self._thinking(),
         )
         t0 = time.time()
         try:
             resp = self._client.models.generate_content(model=self.model, contents=prompt, config=config)
         except Exception as e:  # noqa: BLE001
-            if ("NOT_FOUND" in str(e) or "404" in str(e)) and self._resolve():
+            msg = str(e)
+            if ("NOT_FOUND" in msg or "404" in msg) and self._resolve():
+                config.thinking_config = self._thinking()
+                resp = self._client.models.generate_content(model=self.model, contents=prompt, config=config)
+            elif "thinking" in msg.lower() and not self._no_thinking_cfg:
+                self._no_thinking_cfg = True
+                config.thinking_config = None
                 resp = self._client.models.generate_content(model=self.model, contents=prompt, config=config)
             else:
                 log.warning("gemini %s failed after %.1fs: %s", self.model, time.time() - t0, e)
