@@ -21,10 +21,10 @@ st.markdown(
     """
 <style>
 .block-container {padding-top: 4rem; max-width: 1200px;}
-.tb-title {font-size: 2.6rem; font-weight: 800; margin: 0; line-height: 1.25; padding: .15em 0;
+.tb-title {font-size: 3rem !important; font-weight: 800 !important; margin: 0; line-height: 1.2 !important; padding: .1em 0;
   background: linear-gradient(90deg, #a78bfa, #60a5fa 60%, #34d399);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
-.tb-sub {opacity: .75; margin-top: .2rem; font-size: 1.05rem;}
+.tb-sub {opacity: .75; margin: .2rem 0 1.4rem; font-size: 1.1rem !important;}
 .tb-card {background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08);
   border-radius: 14px; padding: 1rem 1.1rem; margin-bottom: .8rem;}
 .tb-score {font-size: 3.4rem; font-weight: 800; line-height: 1;}
@@ -105,9 +105,9 @@ with st.sidebar:
 
 # ---------- views ----------
 def render_header() -> None:
-    st.markdown('<p class="tb-title">TeachBack</p>', unsafe_allow_html=True)
-    st.markdown('<p class="tb-sub">The fastest way to find out if you really understand something: '
-                'teach it to an AI student who asks the hard questions.</p>', unsafe_allow_html=True)
+    st.markdown('<div class="tb-title">TeachBack</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tb-sub">The fastest way to find out if you really understand something: '
+                'teach it to an AI student who asks the hard questions.</div>', unsafe_allow_html=True)
 
 
 def render_setup() -> None:
