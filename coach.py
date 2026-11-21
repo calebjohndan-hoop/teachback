@@ -61,18 +61,63 @@ def _student_reply(llm, session: Session, target: Concept | None, mode: str) -> 
         return f"Hmm, can you tell me more about {target.name}?"
 
 
-def new_session(llm, topic: str, persona: str, level: str, max_rounds: int, challenge: bool = False) -> Session:
+MAX_NOTES = 15000
+
+
+def read_notes(data: bytes, name: str) -> str:
+    """Pull plain text out of an uploaded PDF, TXT or Markdown file (first ~15k characters)."""
+    name = (name or "").lower()
+    text = ""
+    if name.endswith(".pdf"):
+        import io
+
+        from pypdf import PdfReader
+
+        try:
+            reader = PdfReader(io.BytesIO(data))
+            parts = []
+            for page in reader.pages[:40]:
+                parts.append(page.extract_text() or "")
+                if sum(len(p) for p in parts) > MAX_NOTES:
+                    break
+            text = "\n".join(parts)
+        except Exception as e:  # noqa: BLE001
+            raise LLMError(f"Couldn't read that PDF ({e}). Try exporting it again or upload a .txt file.") from e
+    else:
+        text = data.decode("utf-8", errors="ignore")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    if len(text) < 80:
+        raise LLMError("That file has almost no readable text. If it's a scanned PDF, try a text version.")
+    return text[:MAX_NOTES]
+
+
+def new_session(llm, topic: str, persona: str, level: str, max_rounds: int, challenge: bool = False,
+                notes: str = "", notes_name: str = "", focus: list[Concept] | None = None) -> Session:
     topic = " ".join(topic.split())[:80]
     if not topic:
         raise LLMError("Type a topic first.")
-    data = llm.json("concept_map", *P.concept_map_prompt(topic, level), context={"topic": topic})
-    concepts = parse_concepts(data)
-    if len(concepts) < 3:
+    if focus:
+        # Re-teach mode: same concepts as before, marks wiped clean.
+        concepts = [Concept(id=f"c{i + 1}", name=c.name, description=c.description, weight=c.weight)
+                    for i, c in enumerate(focus)]
+    else:
+        data = llm.json("concept_map", *P.concept_map_prompt(topic, level, notes), context={"topic": topic})
+        concepts = parse_concepts(data)
+    if len(concepts) < (1 if focus else 3):
         raise LLMError("Couldn't build a lesson plan for that topic. Try naming a specific concept.")
     session = Session(topic=topic, persona=persona, level=level, max_rounds=max_rounds,
-                      challenge=challenge, concepts=concepts)
+                      challenge=challenge, concepts=concepts, notes=notes, notes_name=notes_name)
     session.turns.append(Turn("student", _student_reply(llm, session, None, "opening")))
     return session
+
+
+def reteach(llm, old: Session) -> Session:
+    """Start a fresh lesson on only the concepts that weren't clear last time."""
+    weak = [c for c in old.concepts if c.status != "clear"] or old.concepts
+    rounds = max(3, min(old.max_rounds, len(weak) + 2))
+    return new_session(llm, old.topic, old.persona, old.level, rounds, old.challenge,
+                       old.notes, old.notes_name, focus=weak)
 
 
 def teacher_turn(llm, session: Session, message: str) -> None:

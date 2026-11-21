@@ -5,10 +5,11 @@ import html
 import os
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import coach
 from engine import STATUS_LABELS, grade, score, transcript_markdown
-from llm import DEFAULT_MODEL, GeminiLLM, LLMError
+from llm import DEFAULT_MODEL, FallbackLLM, GeminiLLM, LLMError
 from mock import MockLLM
 from prompts import LEVELS, PERSONAS
 
@@ -16,7 +17,7 @@ st.set_page_config(page_title="TeachBack", page_icon="🎓", layout="wide")
 
 QUICK_TOPICS = ["Ohm's law", "Pointers in C", "How vaccines work", "Supply and demand"]
 STATUS_ICON = {"clear": "✅", "partial": "🟡", "misconception": "❌", "not_covered": "⚪"}
-MARK = {"clear": "✓", "partial": "½", "misconception": "✗", "not_covered": "·"}
+MARK = {"clear": "✓", "partial": "½", "misconception": "✗", "not_covered": "○"}
 
 st.markdown(
     """
@@ -59,7 +60,15 @@ st.markdown(
 .m-partial .tb-tick {color: var(--amber);}
 .m-misconception .tb-tick {color: var(--red);}
 .m-misconception .nm {text-decoration: underline wavy var(--red); text-underline-offset: 4px;}
-.m-not_covered .tb-tick {color: var(--rule);}
+.m-not_covered .tb-tick {color: var(--ink-soft); opacity: .45; font-size: 1.2rem;}
+.m-bonus .tb-tick {color: var(--green);}
+.m-bonus .state {color: var(--green);}
+.tb-source {color: var(--ink-soft); font-size: .88rem; margin: -.4rem 0 .8rem;}
+.stApp [data-testid="stMarkdownContainer"] :is(p, li, strong, em),
+.stApp [data-testid="stMetricValue"], .stApp [data-testid="stMetricLabel"] p,
+.stApp [data-testid="stCaptionContainer"], .stApp [data-testid="stFileUploader"] * {
+  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;}
+.stApp [data-testid="stMetricValue"] {color: var(--ink);}
 .m-not_covered .name {color: var(--ink-soft);}
 .tb-new {font-family: 'Caveat', cursive !important; color: var(--red); font-size: 1.05rem; margin-left: .3rem;}
 .tb-evidence {color: var(--ink-soft); font-size: .85rem; margin: .7rem 0 1rem;}
@@ -100,8 +109,31 @@ def get_llm():
     key = api_key()
     if key:
         model = st.session_state.get("model_name") or os.getenv("GEMINI_MODEL", DEFAULT_MODEL)
-        return GeminiLLM(key, model)
+        return FallbackLLM(GeminiLLM(key, model), MockLLM())
     return MockLLM()
+
+
+def run(fn, *args, **kwargs):
+    """Call a coach action and remember if Gemini was down so we can tell the user."""
+    llm = get_llm()
+    out = fn(llm, *args, **kwargs)
+    if getattr(llm, "degraded", False):
+        st.session_state.degraded = True
+    return out
+
+
+def scroll_to_top() -> None:
+    components.html("""<script>
+      const d = window.parent.document;
+      d.querySelectorAll('[data-testid="stMain"], section.main, [data-testid="stAppViewContainer"]')
+        .forEach(e => e.scrollTo({top: 0}));
+      window.parent.scrollTo({top: 0});
+    </script>""", height=0)
+
+
+def start_session(session) -> None:
+    st.session_state.session = session
+    st.session_state.scroll_top = True
 
 
 def set_topic(t: str) -> None:
@@ -110,6 +142,7 @@ def set_topic(t: str) -> None:
 
 def reset() -> None:
     st.session_state.pop("session", None)
+    st.session_state.pop("degraded", None)
 
 
 def restart_same() -> None:
@@ -163,6 +196,9 @@ def render_setup() -> None:
                  format_func=lambda k: {"school": "School", "college": "College", "advanced": "Advanced"}[k])
         st.slider("Rounds", 3, 10, 6, key="rounds", help="How many times you explain before the lesson ends.")
         st.toggle("Challenge mode: hide the marking scheme", key="challenge")
+        st.file_uploader("Your own notes (optional)", type=["pdf", "txt", "md"], key="notes_file",
+                         help="Upload lecture notes or a textbook chapter and the marking scheme is built "
+                              "from them, so you're marked on what your course actually teaches.")
     with right:
         st.radio("Your student", list(PERSONAS), key="persona",
                  format_func=lambda k: f"{PERSONAS[k]['emoji']}  {PERSONAS[k]['name']}")
@@ -173,15 +209,21 @@ def render_setup() -> None:
 
     topic = st.session_state.get("topic", "").strip()
     if st.button("Start teaching", type="primary", key="start", disabled=not topic):
+        st.session_state.pop("degraded", None)
         with st.spinner("Your student is finding a seat..."):
             try:
-                st.session_state.session = coach.new_session(
-                    get_llm(), topic, st.session_state.persona, st.session_state.level,
-                    st.session_state.rounds, st.session_state.get("challenge", False))
+                notes, notes_name = "", ""
+                f = st.session_state.get("notes_file")
+                if f is not None:
+                    notes, notes_name = coach.read_notes(f.getvalue(), f.name), f.name
+                start_session(run(coach.new_session, topic, st.session_state.persona, st.session_state.level,
+                                  st.session_state.rounds, st.session_state.get("challenge", False),
+                                  notes, notes_name))
             except LLMError as e:
                 st.error(str(e))
                 return
         st.rerun()
+    st.caption("Tip: slip in a mistake on purpose and see if your student catches it.")
 
 
 def marking_rows(s, with_quotes: bool = False) -> str:
@@ -201,7 +243,20 @@ def marking_rows(s, with_quotes: bool = False) -> str:
         rows.append(f'<div class="tb-row m-{c.status}" title="{tip}"><span class="tb-tick">{MARK[c.status]}</span>'
                     f'<div><div class="name"><span class="nm">{name}</span>{new}</div><div class="state">{STATUS_LABELS[c.status]}</div>'
                     f'{extra}</div></div>')
+    for b in s.bonus:
+        extra = ""
+        if with_quotes:
+            extra = f'<div style="margin-top:.25rem"><span class="tb-quote">{html.escape(b["evidence"])}</span></div>'
+        rows.append(f'<div class="tb-row m-bonus"><span class="tb-tick">+</span><div>'
+                    f'<div class="name">{html.escape(b["insight"])}</div><div class="state">Extra credit: '
+                    f'a good idea that wasn\'t on the scheme</div>{extra}</div></div>')
     return "".join(rows)
+
+
+def notices(s) -> None:
+    if st.session_state.get("degraded"):
+        st.info("Gemini is busy right now, so your student switched to the offline backup brain. "
+                "Marking is simpler until Gemini is back; just keep teaching.")
 
 
 def render_dashboard(s) -> None:
@@ -209,7 +264,9 @@ def render_dashboard(s) -> None:
     st.markdown(f'<div class="tb-label">Your mark so far</div>'
                 f'<div class="tb-grade">{pts}<small>/100</small></div>'
                 f'<div class="tb-round">Round {min(s.rounds_done, s.max_rounds)} of {s.max_rounds}</div>'
-                f'<div class="tb-label">Marking scheme</div>{marking_rows(s)}'
+                f'<div class="tb-label">Marking scheme</div>'
+                + (f'<div class="tb-source">Built from your notes: {html.escape(s.notes_name)}</div>' if s.notes_name else '')
+                + f'{marking_rows(s)}'
                 f'<div class="tb-evidence">{s.verified} quotes checked against your own words, '
                 f'{s.rejected} rejected</div>', unsafe_allow_html=True)
 
@@ -222,6 +279,9 @@ def render_dashboard(s) -> None:
 
 def render_lesson(s) -> None:
     persona = PERSONAS[s.persona]
+    if st.session_state.pop("scroll_top", False):
+        scroll_to_top()
+    notices(s)
     left, right = st.columns([3, 2], gap="large")
     with right:
         render_dashboard(s)
@@ -242,7 +302,7 @@ def render_lesson(s) -> None:
             with st.chat_message("assistant", avatar=persona["emoji"]):
                 with st.spinner("Marking your explanation..."):
                     try:
-                        coach.teacher_turn(get_llm(), s, msg)
+                        run(coach.teacher_turn, s, msg)
                     except LLMError as e:
                         st.error(f"Your message wasn't counted because the AI didn't respond. Send it again. ({e})")
                         return
@@ -251,9 +311,14 @@ def render_lesson(s) -> None:
 
 def render_report(s) -> None:
     persona = PERSONAS[s.persona]
+    if st.session_state.pop("scroll_top", False):
+        scroll_to_top()
     if s.report is None:
         with st.spinner("Writing your report..."):
-            coach.finish(get_llm(), s)
+            run(coach.finish, s)
+        st.session_state.scroll_top = True
+        st.rerun()
+    notices(s)
     r = s.report
     pts = score(s.concepts)
     title, _ = grade(pts)
@@ -275,8 +340,19 @@ def render_report(s) -> None:
             st.markdown(f"- {html.escape(step)}")
         st.download_button("Download transcript", transcript_markdown(s, persona["name"]),
                            file_name="teachback_session.md", use_container_width=True)
+        weak = [c for c in s.concepts if c.status != "clear"]
+        if weak and st.button(f"Re-teach the {len(weak)} idea{'s' if len(weak) != 1 else ''} you missed",
+                              key="reteach", type="primary", use_container_width=True):
+            st.session_state.pop("degraded", None)
+            with st.spinner("Setting up a lesson on just those ideas..."):
+                try:
+                    start_session(run(coach.reteach, s))
+                except LLMError as e:
+                    st.error(str(e))
+                    return
+            st.rerun()
         b1, b2 = st.columns(2)
-        b1.button("Teach it again", key="again", on_click=restart_same, use_container_width=True, type="primary")
+        b1.button("Teach it again", key="again", on_click=restart_same, use_container_width=True)
         b2.button("New topic", key="new", on_click=reset, use_container_width=True)
 
     with right:

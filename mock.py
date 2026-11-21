@@ -68,6 +68,22 @@ def _norm(s: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9]+", " ", s.lower()).split())
 
 
+STOP = {"which", "their", "about", "there", "these", "those", "where", "would", "should", "could",
+        "explanation", "correct", "include", "concept", "between", "other", "using", "being"}
+
+
+def _derived_keywords(name: str, description: str) -> list[str]:
+    """For concepts the offline brain didn't invent (e.g. a Gemini-built or re-teach plan),
+    use the meaningful words of the concept itself as its keywords."""
+    words = re.findall(r"[a-z]{5,}", f"{name} {description}".lower())
+    out = []
+    for w in words:
+        stem = w[:6]
+        if w not in STOP and stem not in out:
+            out.append(stem)
+    return out[:8]
+
+
 class MockLLM:
     model = "offline-demo"
 
@@ -94,7 +110,10 @@ class MockLLM:
         sentences = _sentences(ctx.get("teacher_text", ""))
         out = []
         for c in ctx.get("concepts", []):
-            _, _, keywords = table.get(c["name"], ("", 1, []))
+            if c["name"] in table:
+                _, _, keywords = table[c["name"]]
+            else:
+                keywords = _derived_keywords(c["name"], c.get("description", ""))
             hits = [s for s in sentences if any(k in _norm(s) for k in keywords)]
             distinct = {k for k in keywords for s in hits if k in _norm(s)}
             bad = [s for s in sentences for m in OHM_MISCONCEPTIONS.get(c["name"], []) if table is OHM and m in _norm(s)]
@@ -109,7 +128,7 @@ class MockLLM:
             out.append({"id": c["id"], "status": status, "evidence": " ".join(evidence.split()[:25]),
                         "note": {"clear": "Nicely explained.", "partial": "Add more detail or an example.",
                                  "misconception": "Double-check this claim.", "not_covered": "Not mentioned yet."}[status]})
-        return {"concepts": out}
+        return {"concepts": out, "bonus": []}
 
     def _report(self, ctx: dict) -> dict:
         weak = [c for c in ctx.get("concepts", []) if c["status"] != "clear"]

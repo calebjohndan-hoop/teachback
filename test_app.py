@@ -21,6 +21,17 @@ def test_ui_end_to_end(monkeypatch):
     at.button(key="finish").click().run()
     assert not at.exception
     assert any("Marking scheme" in m.value for m in at.markdown)
+    at.button(key="reteach").click().run()
+    assert not at.exception
+    s = at.session_state["session"]
+    assert not s.finished and all(c.status == "not_covered" for c in s.concepts)
+    at.button(key="finish").click().run() if s.rounds_done else None
+    at.button(key="restart").click().run()
+    assert not at.exception
+    at.button(key="quick_0").click().run()
+    at.button(key="start").click().run()
+    at.chat_input(key="chat").set_value("Voltage is the electrical push, the potential difference in volts.").run()
+    at.button(key="finish").click().run()
     at.button(key="again").click().run()
     assert not at.exception
     assert at.text_input(key="topic").value == "Ohm's law"

@@ -47,6 +47,9 @@ class Session:
     last_changes: list[tuple[str, str, str]] = field(default_factory=list)
     finished: bool = False
     report: dict | None = None
+    bonus: list[dict] = field(default_factory=list)  # verified extra-credit insights
+    notes: str = ""          # the user's own notes, if they uploaded any
+    notes_name: str = ""
 
     @property
     def rounds_done(self) -> int:
@@ -123,7 +126,37 @@ def apply_evaluation(session: Session, result: dict) -> list[tuple[str, str, str
         concept.note = " ".join(str(item.get("note", "")).split())[:160]
         changes.append((concept.id, old, status))
     session.last_changes = changes
+    apply_bonus(session, result)
     return changes
+
+
+MAX_BONUS = 5
+
+
+def apply_bonus(session: Session, result: dict) -> list[dict]:
+    """Extra credit for correct ideas that are not on the marking scheme. Same rule as
+    everything else: it only counts if the quote is really in what the teacher wrote.
+    Bonus is shown to the learner but never changes the score."""
+    items = result.get("bonus", []) if isinstance(result, dict) else []
+    teacher = session.teacher_text()
+    added = []
+    seen = {_norm(b["insight"]) for b in session.bonus}
+    for item in items if isinstance(items, list) else []:
+        if len(session.bonus) >= MAX_BONUS or not isinstance(item, dict):
+            break
+        insight = " ".join(str(item.get("insight", "")).split())[:90]
+        evidence = " ".join(str(item.get("evidence", "")).split())
+        if not insight or _norm(insight) in seen:
+            continue
+        if not verify_quote(evidence, teacher):
+            session.rejected += 1
+            continue
+        session.verified += 1
+        entry = {"insight": insight, "evidence": evidence}
+        session.bonus.append(entry)
+        seen.add(_norm(insight))
+        added.append(entry)
+    return added
 
 
 FOCUS_ORDER = {"misconception": 0, "not_covered": 1, "partial": 2}
@@ -165,4 +198,8 @@ def transcript_markdown(session: Session, student_name: str) -> str:
     lines.append("## Concept results\n")
     for c in session.concepts:
         lines.append(f"- **{c.name}**: {STATUS_LABELS[c.status]}" + (f" (\"{c.evidence}\")" if c.evidence else ""))
+    if session.bonus:
+        lines.append("\n## Extra credit\n")
+        for b in session.bonus:
+            lines.append(f"- {b['insight']} (\"{b['evidence']}\")")
     return "\n".join(lines)

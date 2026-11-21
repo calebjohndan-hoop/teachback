@@ -113,3 +113,76 @@ def test_pick_model_falls_back_to_newest_flash():
 def test_clean_reply_strips_tags():
     assert coach.clean_reply("<utterance>Hi there?</utterance>") == "Hi there?"
     assert coach.clean_reply('Student: "Why is that?"') == "Why is that?"
+
+
+def test_bonus_needs_a_real_quote_and_never_changes_score():
+    from engine import apply_bonus
+    s = make_session(("clear", 3), ("not_covered", 3))
+    s.turns.append(Turn("teacher", "Think of voltage like water pressure in a hose pushing water along."))
+    before = score(s.concepts)
+    apply_bonus(s, {"bonus": [
+        {"insight": "Water pressure analogy", "evidence": "voltage like water pressure in a hose"},
+        {"insight": "Made up insight", "evidence": "superconductors have zero resistance"},
+        {"insight": "water pressure analogy", "evidence": "voltage like water pressure in a hose"},
+    ]})
+    assert [b["insight"] for b in s.bonus] == ["Water pressure analogy"]
+    assert s.rejected == 1 and score(s.concepts) == before
+
+
+def test_reteach_only_weak_concepts_with_fresh_marks():
+    llm = MockLLM()
+    s = coach.new_session(llm, "Ohm's law", "kid", "college", 4)
+    s.concepts[0].status = "clear"
+    s.concepts[1].status = "misconception"
+    s2 = coach.reteach(llm, s)
+    assert s.concepts[0].name not in [c.name for c in s2.concepts]
+    assert s.concepts[1].name in [c.name for c in s2.concepts]
+    assert all(c.status == "not_covered" for c in s2.concepts)
+    assert s2.turns[0].role == "student"
+
+
+def test_read_notes_text_and_rejects_empty():
+    import pytest
+    from llm import LLMError
+    text = coach.read_notes(("Diodes let current flow one way. " * 10).encode(), "notes.txt")
+    assert text.startswith("Diodes")
+    with pytest.raises(LLMError):
+        coach.read_notes(b"hi", "empty.txt")
+
+
+def test_read_notes_pdf(tmp_path):
+    reportlab = __import__("pytest").importorskip("reportlab")
+    from reportlab.pdfgen import canvas
+    path = tmp_path / "n.pdf"
+    c = canvas.Canvas(str(path))
+    c.drawString(72, 720, "A pointer stores the memory address of another variable in C programs.")
+    c.drawString(72, 700, "Dereferencing with the star operator reads the value at that address.")
+    c.save()
+    text = coach.read_notes(path.read_bytes(), "n.pdf")
+    assert "pointer stores" in text
+
+
+def test_notes_reach_the_concept_prompt():
+    import prompts as P
+    _, prompt = P.concept_map_prompt("Diodes", "college", "PN junction forward bias notes")
+    assert "PN junction forward bias notes" in prompt and "<notes>" in prompt
+
+
+def test_fallback_llm_switches_to_offline_brain():
+    from llm import FallbackLLM, LLMError
+
+    class Down:
+        def json(self, *a, **k): raise LLMError("503 UNAVAILABLE")
+        def text(self, *a, **k): raise LLMError("503 UNAVAILABLE")
+
+    f = FallbackLLM(Down(), MockLLM())
+    s = coach.new_session(f, "Ohm's law", "kid", "college", 3)
+    assert f.degraded and len(s.concepts) >= 3
+
+
+def test_offline_brain_grades_unfamiliar_concepts():
+    llm = MockLLM()
+    s = coach.new_session(llm, "Photosynthesis", "kid", "college", 3,
+                          focus=[Concept(id="x", name="Chlorophyll absorbs light", description="Chlorophyll captures sunlight energy")])
+    coach.teacher_turn(llm, s, "Chlorophyll in the leaves absorbs sunlight and captures its energy for the plant.")
+    assert s.concepts[0].status in ("clear", "partial")

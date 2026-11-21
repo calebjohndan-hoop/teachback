@@ -164,3 +164,29 @@ class GeminiLLM:
         if not out:
             raise LLMError(f"Gemini returned an empty reply on '{task}'")
         return out
+
+
+class FallbackLLM:
+    """Use Gemini, but if every Gemini model is down or rate-limited, quietly switch to the
+    offline brain so the lesson keeps going instead of showing an error (e.g. during judging)."""
+
+    def __init__(self, primary, backup):
+        self.primary = primary
+        self.backup = backup
+        self.degraded = False
+
+    def json(self, task: str, system: str, prompt: str, context: dict | None = None, temperature: float = 0.2) -> dict:
+        try:
+            return self.primary.json(task, system, prompt, context=context, temperature=temperature)
+        except LLMError as e:
+            log.warning("falling back to offline brain for %s: %s", task, str(e)[:120])
+            self.degraded = True
+            return self.backup.json(task, system, prompt, context=context, temperature=temperature)
+
+    def text(self, task: str, system: str, prompt: str, context: dict | None = None, temperature: float = 0.8) -> str:
+        try:
+            return self.primary.text(task, system, prompt, context=context, temperature=temperature)
+        except LLMError as e:
+            log.warning("falling back to offline brain for %s: %s", task, str(e)[:120])
+            self.degraded = True
+            return self.backup.text(task, system, prompt, context=context, temperature=temperature)
