@@ -86,8 +86,9 @@ class GeminiLLM:
         first = pick_model(names, self.model) if names else self.model
         skip = ("image", "tts", "audio", "live", "embedding", "8b")
         others = [n for n in names if "flash" in n and not any(s in n for s in skip) and n != first]
-        others.sort(key=lambda n: (_version(n), "lite" not in n, "preview" not in n and "exp" not in n), reverse=True)
-        return [first] + others[:3]
+        # Lite models are faster and usually less overloaded, so they are tried first.
+        others.sort(key=lambda n: ("lite" in n, _version(n), "preview" not in n and "exp" not in n), reverse=True)
+        return [first] + others[:4]
 
     def _thinking(self):
         """Keep reasoning short: TeachBack needs quick, simple replies."""
@@ -133,7 +134,7 @@ class GeminiLLM:
                 msg = str(e)
                 log.warning("gemini %s failed after %.1fs: %s", model, time.time() - t0, msg[:200])
                 last = e
-                if not any(s in msg for s in RETRYABLE) or len(tried) >= 4:
+                if not any(s in msg for s in RETRYABLE) or len(tried) >= 5:
                     break
                 if len(tried) == 1:
                     try_list = [m for m in self._candidates() if m not in tried]
