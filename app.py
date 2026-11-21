@@ -58,7 +58,7 @@ st.markdown(
 .m-clear .tb-tick {color: var(--green);}
 .m-partial .tb-tick {color: var(--amber);}
 .m-misconception .tb-tick {color: var(--red);}
-.m-misconception .name {text-decoration: underline wavy var(--red); text-underline-offset: 4px;}
+.m-misconception .nm {text-decoration: underline wavy var(--red); text-underline-offset: 4px;}
 .m-not_covered .tb-tick {color: var(--rule);}
 .m-not_covered .name {color: var(--ink-soft);}
 .tb-new {font-family: 'Caveat', cursive !important; color: var(--red); font-size: 1.05rem; margin-left: .3rem;}
@@ -73,7 +73,9 @@ st.markdown(
   background-image: linear-gradient(90deg, transparent 2.6rem, rgba(200,55,45,.35) 2.6rem, rgba(200,55,45,.35) calc(2.6rem + 1px), transparent calc(2.6rem + 1px)),
     repeating-linear-gradient(180deg, transparent 0, transparent 1.85rem, var(--rule) 1.85rem, var(--rule) calc(1.85rem + 1px)) !important;
   border-radius: 6px;}
-[data-testid="stChatMessage"] {background: transparent !important;}
+[data-testid="stChatMessage"] {background: transparent !important; padding: .9rem .6rem 0 .3rem !important;}
+.st-key-chatbox [data-testid="stChatMessage"] p {line-height: 1.85rem !important; margin: 0 !important;
+  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important; font-size: 1.02rem !important; color: var(--ink);}
 .stButton button {border-radius: 6px;}
 .stButton button:focus-visible, input:focus-visible {outline: 3px solid #1F4FA8 !important; outline-offset: 2px;}
 @media (max-width: 640px) {.tb-title {font-size: 2.2rem !important;} .tb-grade {font-size: 3.2rem;}}
@@ -197,7 +199,7 @@ def marking_rows(s, with_quotes: bool = False) -> str:
             if c.note:
                 extra += f'<div class="tb-note">{html.escape(c.note)}</div>'
         rows.append(f'<div class="tb-row m-{c.status}" title="{tip}"><span class="tb-tick">{MARK[c.status]}</span>'
-                    f'<div><div class="name">{name}{new}</div><div class="state">{STATUS_LABELS[c.status]}</div>'
+                    f'<div><div class="name"><span class="nm">{name}</span>{new}</div><div class="state">{STATUS_LABELS[c.status]}</div>'
                     f'{extra}</div></div>')
     return "".join(rows)
 
