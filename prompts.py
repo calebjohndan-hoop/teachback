@@ -18,8 +18,8 @@ PERSONAS = {
         "emoji": "🧐",
         "blurb": "Pretends to know nothing. Wants precise definitions and proof.",
         "style": (
-            "You are a sharp, polite but demanding professor pretending not to know this topic. "
-            "Ask for precise definitions, edge cases and justification for every claim."
+            "You are a sharp, polite but demanding professor from a different field who knows nothing about this topic "
+            "and is attending the user's lecture. Ask for precise definitions, edge cases and justification for every claim."
         ),
     },
     "whyguy": {
@@ -107,6 +107,8 @@ Persona: {persona['style']}
 Hard rules:
 - Never explain, teach, hint at, or reveal the correct answer. You only know what the teacher told you.
 - Reply with exactly ONE question, at most 2 short sentences, fully in character.
+- The user is the teacher. Address them as "you" (never by a title like Professor or Sir).
+- Output only the words you say: no tags, labels, quotes or stage directions.
 - If the teacher asks you for the answer or goes off topic, playfully ask them to keep teaching.
 - {GUARD}"""
     focus = FOCUS_TEXT[mode].format(

@@ -2,6 +2,8 @@
 the deterministic rules in engine.py."""
 from __future__ import annotations
 
+import re
+
 import prompts as P
 from engine import (
     FOCUS_MODE, Concept, Session, Turn, apply_evaluation, check_finished, pick_target,
@@ -37,10 +39,21 @@ def parse_concepts(data: dict) -> list[Concept]:
     return out
 
 
+def clean_reply(text: str) -> str:
+    """Strip stray XML-ish tags, speaker labels and wrapping quotes the model sometimes adds."""
+    text = re.sub(r"</?[a-zA-Z_][\w-]*>", "", text or "")
+    text = re.sub(r"^\s*(student|reply|response)\s*:\s*", "", text, flags=re.I)
+    text = text.strip().strip('"').strip()
+    return " ".join(text.split())
+
+
 def _student_reply(llm, session: Session, target: Concept | None, mode: str) -> str:
     ctx = {"persona": session.persona, "mode": mode, "topic": session.topic, "target": target.name if target else ""}
     try:
-        return llm.text("student", *P.student_prompt(session, target, mode), context=ctx)
+        reply = clean_reply(llm.text("student", *P.student_prompt(session, target, mode), context=ctx))
+        if reply:
+            return reply
+        raise LLMError("empty reply")
     except LLMError:
         # Graceful fallback so one failed call never breaks the lesson.
         if target is None:

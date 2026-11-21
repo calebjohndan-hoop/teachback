@@ -108,3 +108,8 @@ def test_pick_model_falls_back_to_newest_flash():
     assert pick_model(avail, "gemini-2.5-flash") == "gemini-3-flash"
     assert pick_model(avail + ["gemini-flash-latest"], "nope") == "gemini-flash-latest"
     assert pick_model([], "x") == "x"
+
+
+def test_clean_reply_strips_tags():
+    assert coach.clean_reply("<utterance>Hi there?</utterance>") == "Hi there?"
+    assert coach.clean_reply('Student: "Why is that?"') == "Why is that?"
