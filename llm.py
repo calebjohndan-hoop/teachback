@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.0-flash"
 
 
 class LLMError(Exception):
