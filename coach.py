@@ -6,7 +6,7 @@ import re
 
 import prompts as P
 from engine import (
-    FOCUS_MODE, Concept, Session, Turn, apply_evaluation, check_finished, pick_target,
+    FOCUS_MODE, Concept, Session, Turn, apply_evaluation, check_finished, looks_like_gaming, pick_target,
 )
 from llm import LLMError
 
@@ -107,7 +107,8 @@ def new_session(llm, topic: str, persona: str, level: str, max_rounds: int, chal
     if len(concepts) < (1 if focus else 3):
         raise LLMError("Couldn't build a lesson plan for that topic. Try naming a specific concept.")
     session = Session(topic=topic, persona=persona, level=level, max_rounds=max_rounds,
-                      challenge=challenge, concepts=concepts, notes=notes, notes_name=notes_name)
+                      challenge=challenge, concepts=concepts, notes=notes, notes_name=notes_name,
+                      reteach=bool(focus))
     session.turns.append(Turn("student", _student_reply(llm, session, None, "opening")))
     return session
 
@@ -125,6 +126,14 @@ def teacher_turn(llm, session: Session, message: str) -> None:
     if not message or session.finished:
         return
     session.turns.append(Turn("teacher", message))
+    if looks_like_gaming(message):
+        # Not graded at all: the examiner never sees it, so it can't be talked into free marks.
+        session.blocked += 1
+        session.last_changes = []
+        session.turns.append(Turn("student", "Nice try! I only learn from real teaching, so that one "
+                                             "doesn't count. Can you explain it properly?"))
+        check_finished(session)
+        return
     ctx = {"topic": session.topic, "concepts": _concept_ctx(session), "teacher_text": session.teacher_text()}
     try:
         result = llm.json("evaluate", *P.evaluate_prompt(session), context=ctx)

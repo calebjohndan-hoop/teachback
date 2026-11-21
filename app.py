@@ -15,7 +15,6 @@ from prompts import LEVELS, PERSONAS
 st.set_page_config(page_title="TeachBack", page_icon="🎓", layout="wide")
 
 QUICK_TOPICS = ["Ohm's law", "Pointers in C", "How vaccines work", "Supply and demand"]
-STATUS_ICON = {"clear": "✅", "partial": "🟡", "misconception": "❌", "not_covered": "⚪"}
 MARK = {"clear": "✓", "partial": "½", "misconception": "✗", "not_covered": "○"}
 
 st.markdown(
@@ -24,8 +23,16 @@ st.markdown(
 @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Caveat:wght@600;700&display=swap');
 :root {
   --paper: #F6F8FB; --ink: #1B2A4A; --ink-soft: #55627D; --rule: #C9D8EE;
-  --red: #C8372D; --green: #2F7D4F; --amber: #B7791F; --hi: #FFF1A6;
+  --red: #C8372D; --green: #2F7D4F; --amber: #A86A12; --hi: #FFF1A6;
+  --card: #FFFFFF; --sheet: #FFFFFF; --margin: rgba(200,55,45,.35); --focus: #1F4FA8;
 }
+/* dark mode: the same exercise book, read under a desk lamp */
+html[data-tb-theme="dark"] {
+  --paper: #12151C; --ink: #E8ECF4; --ink-soft: #A7B1C6; --rule: #2B3448;
+  --red: #FF8A7A; --green: #6BD49A; --amber: #F4BE62; --hi: rgba(250,204,21,.32);
+  --card: #1A1F2B; --sheet: #161B26; --margin: rgba(255,138,122,.45); --focus: #8FB3FF;
+}
+.st-key-tbjs, .st-key-tbscroll {position: absolute !important; width: 0 !important; height: 0 !important; overflow: hidden !important;}
 .stApp, .stApp p, .stApp label, .stApp input, .stApp textarea, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp li {
   font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
 }
@@ -36,7 +43,7 @@ st.markdown(
   font-weight: 700; margin-left: .35em; display: inline-block; transform: rotate(-6deg) translateY(-.35em);}
 .tb-sub {color: var(--ink-soft); margin: .25rem 0 1.6rem; font-size: 1.1rem !important; max-width: 62ch;}
 .tb-label {color: var(--ink-soft); font-size: .95rem; margin: 0 0 .4rem; font-weight: 700;}
-.tb-card {background: #fff; border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.1rem;
+.tb-card {background: var(--card); border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.1rem;
   margin-bottom: .8rem; border-left: 3px solid var(--red);}
 .tb-card b {color: var(--ink);}
 
@@ -77,20 +84,49 @@ st.markdown(
 .tb-ai {color: var(--ink-soft); font-size: .85rem; margin-bottom: .6rem;}
 
 /* the exercise-book page for the lesson */
-.st-key-chatbox {background-color: #fff !important;
-  background-image: linear-gradient(90deg, transparent 2.6rem, rgba(200,55,45,.35) 2.6rem, rgba(200,55,45,.35) calc(2.6rem + 1px), transparent calc(2.6rem + 1px)),
+.st-key-chatbox {background-color: var(--sheet) !important;
+  background-image: linear-gradient(90deg, transparent 2.6rem, var(--margin) 2.6rem, var(--margin) calc(2.6rem + 1px), transparent calc(2.6rem + 1px)),
     repeating-linear-gradient(180deg, transparent 0, transparent 1.85rem, var(--rule) 1.85rem, var(--rule) calc(1.85rem + 1px)) !important;
   border-radius: 6px;}
 [data-testid="stChatMessage"] {background: transparent !important; padding: .9rem .6rem 0 .3rem !important;}
 .st-key-chatbox [data-testid="stChatMessage"] p {line-height: 1.85rem !important; margin: 0 !important;
   font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important; font-size: 1.02rem !important; color: var(--ink);}
 .stButton button {border-radius: 6px;}
-.stButton button:focus-visible, input:focus-visible {outline: 3px solid #1F4FA8 !important; outline-offset: 2px;}
-@media (max-width: 640px) {.tb-title {font-size: 2.2rem !important;} .tb-grade {font-size: 3.2rem;}}
+.stApp button:focus-visible, .stApp input:focus-visible, .stApp textarea:focus-visible {outline: 3px solid var(--focus) !important; outline-offset: 2px;}
+@media (prefers-reduced-motion: reduce) {* {scroll-behavior: auto !important;}}
+@media (max-width: 640px) {.tb-title {font-size: 2.2rem !important;} .tb-grade {font-size: 3.2rem;} .block-container {padding-top: 2.5rem;}}
 </style>
 """,
     unsafe_allow_html=True,
 )
+
+
+def theme_sync() -> None:
+    """Keep the custom styling in step with Streamlit's light/dark theme, live, by reading the
+    app's real background colour (st.context.theme can lag behind a theme switch)."""
+    try:
+        if st.context.theme.type == "dark":
+            st.markdown('<style>:root{--paper:#12151C;--ink:#E8ECF4;--ink-soft:#A7B1C6;--rule:#2B3448;'
+                        '--red:#FF8A7A;--green:#6BD49A;--amber:#F4BE62;--hi:rgba(250,204,21,.32);'
+                        '--card:#1A1F2B;--sheet:#161B26;--margin:rgba(255,138,122,.45);--focus:#8FB3FF;}</style>',
+                        unsafe_allow_html=True)
+    except Exception:  # noqa: BLE001
+        pass
+    with st.container(key="tbjs"):
+        st.iframe("""<script>
+          const d = window.parent.document;
+          const lum = c => { const m = (c || '').match(/[\\d.]+/g); if (!m) return 1;
+            return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255; };
+          const sync = () => { const app = d.querySelector('.stApp'); if (!app) return;
+            const dark = lum(getComputedStyle(app).backgroundColor) < 0.5;
+            const want = dark ? 'dark' : 'light';
+            if (d.documentElement.getAttribute('data-tb-theme') !== want)
+              d.documentElement.setAttribute('data-tb-theme', want); };
+          sync(); setInterval(sync, 400);
+        </script>""", height=1)
+
+
+theme_sync()
 
 
 # ---------- model selection ----------
@@ -123,6 +159,11 @@ def run(fn, *args, **kwargs):
 
 def scroll_to_top() -> None:
     # Streamlit's chat layout sticks the page to the bottom; pull it back up once it settles.
+    with st.container(key="tbscroll"):
+        _scroll_script()
+
+
+def _scroll_script() -> None:
     st.iframe("""<script>
       const go = () => {
         const d = window.parent.document;
@@ -155,27 +196,46 @@ def restart_same() -> None:
 
 
 # ---------- sidebar ----------
+def record_progress(s) -> None:
+    """Remember each finished lesson so learners can see re-teaching pay off."""
+    hist = st.session_state.setdefault("history", [])
+    key = id(s)
+    if any(h["key"] == key for h in hist):
+        return
+    hist.append({"key": key, "topic": s.topic, "score": score(s.concepts), "reteach": s.reteach})
+
+
 with st.sidebar:
-    st.markdown("### ⚙️ Settings")
-    env_key = bool(os.getenv("GEMINI_API_KEY")) or bool(api_key() and not st.session_state.get("user_key"))
-    if env_key:
+    if api_key():
         st.success("Gemini connected")
     else:
         st.text_input("Gemini API key", type="password", key="user_key",
                       help="Free key from aistudio.google.com. Stays in this browser session only.")
-        if not st.session_state.get("user_key"):
-            st.info("No key: running **Demo mode** with a simple offline brain. "
-                    "Add a key for a real AI student.")
-    st.text_input("Model", value=os.getenv("GEMINI_MODEL", DEFAULT_MODEL), key="model_name")
+        st.info("No key: running **Demo mode** with a simple offline brain. Add a key for a real AI student.")
+
+    hist = st.session_state.get("history", [])
+    st.markdown("#### Your progress")
+    if hist:
+        for h in reversed(hist[-8:]):
+            label = "re-teach" if h["reteach"] else "lesson"
+            st.markdown(f"**{h['score']}/100** · {html.escape(h['topic'])} ({label})")
+    else:
+        st.caption("Finish a lesson and your marks show up here, so you can see re-teaching pay off.")
+
     st.markdown("---")
     st.markdown(
         "**How it works**\n\n"
-        "1. AI builds a hidden checklist of what a great explanation covers.\n"
-        "2. You teach; an AI examiner grades each idea.\n"
-        "3. Your student asks about whatever you explained worst.\n\n"
+        "1. AI builds a marking scheme for your topic, or from your own notes.\n"
+        "2. You teach; an AI examiner marks each idea and can give extra credit.\n"
+        "3. Your student asks about whatever you explained worst.\n"
+        "4. Re-teach just the ideas you missed.\n\n"
         "🔎 **No made-up credit:** the examiner must quote your exact words, and the app "
-        "checks every quote in code before it changes your score."
+        "checks every quote in code before it changes your mark."
     )
+    st.caption("🌙 Dark mode follows your device. To switch, open the ⋮ menu (top right) → Settings → Theme.")
+    with st.expander("Advanced"):
+        st.text_input("Gemini model", value=os.getenv("GEMINI_MODEL", DEFAULT_MODEL), key="model_name",
+                      help="If this model is busy or retired, TeachBack switches to another automatically.")
 
 
 # ---------- views ----------
@@ -218,6 +278,8 @@ def render_setup() -> None:
                 f = st.session_state.get("notes_file")
                 if f is not None:
                     notes, notes_name = coach.read_notes(f.getvalue(), f.name), f.name
+                    if len(notes) >= coach.MAX_NOTES:
+                        notes_name += " (first part only, it's a long file)"
                 start_session(run(coach.new_session, topic, st.session_state.persona, st.session_state.level,
                                   st.session_state.rounds, st.session_state.get("challenge", False),
                                   notes, notes_name))
@@ -242,14 +304,14 @@ def marking_rows(s, with_quotes: bool = False) -> str:
                 extra += f'<div style="margin-top:.25rem"><span class="tb-quote">{html.escape(c.evidence)}</span></div>'
             if c.note:
                 extra += f'<div class="tb-note">{html.escape(c.note)}</div>'
-        rows.append(f'<div class="tb-row m-{c.status}" title="{tip}"><span class="tb-tick">{MARK[c.status]}</span>'
+        rows.append(f'<div class="tb-row m-{c.status}" title="{tip}"><span class="tb-tick" aria-hidden="true">{MARK[c.status]}</span>'
                     f'<div><div class="name"><span class="nm">{name}</span>{new}</div><div class="state">{STATUS_LABELS[c.status]}</div>'
                     f'{extra}</div></div>')
     for b in s.bonus:
         extra = ""
         if with_quotes:
             extra = f'<div style="margin-top:.25rem"><span class="tb-quote">{html.escape(b["evidence"])}</span></div>'
-        rows.append(f'<div class="tb-row m-bonus"><span class="tb-tick">+</span><div>'
+        rows.append(f'<div class="tb-row m-bonus"><span class="tb-tick" aria-hidden="true">+</span><div>'
                     f'<div class="name">{html.escape(b["insight"])}</div><div class="state">Extra credit: '
                     f'a good idea that wasn\'t on the scheme</div>{extra}</div></div>')
     return "".join(rows)
@@ -264,13 +326,16 @@ def notices(s) -> None:
 def render_dashboard(s) -> None:
     pts = score(s.concepts)
     st.markdown(f'<div class="tb-label">Your mark so far</div>'
-                f'<div class="tb-grade">{pts}<small>/100</small></div>'
+                f'<div class="tb-grade" role="img" aria-label="Your mark so far: {pts} out of 100">'
+                f'{pts}<small>/100</small></div>'
                 f'<div class="tb-round">Round {min(s.rounds_done, s.max_rounds)} of {s.max_rounds}</div>'
                 f'<div class="tb-label">Marking scheme</div>'
                 + (f'<div class="tb-source">Built from your notes: {html.escape(s.notes_name)}</div>' if s.notes_name else '')
                 + f'{marking_rows(s)}'
                 f'<div class="tb-evidence">{s.verified} quotes checked against your own words, '
-                f'{s.rejected} rejected</div>', unsafe_allow_html=True)
+                f'{s.rejected} rejected'
+                + (f', {s.blocked} attempt{"s" if s.blocked != 1 else ""} to game the marks ignored' if s.blocked else '')
+                + '</div>', unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
     if c1.button("Finish lesson", key="finish", use_container_width=True, disabled=s.rounds_done == 0):
@@ -288,7 +353,8 @@ def render_lesson(s) -> None:
     with right:
         render_dashboard(s)
     with left:
-        st.markdown(f"#### You're teaching {html.escape(s.topic)} to the {persona['name']} {persona['emoji']}")
+        what = "Re-teaching what you missed in" if s.reteach else "You're teaching"
+        st.markdown(f"#### {what} {html.escape(s.topic)} to the {persona['name']} {persona['emoji']}")
         chat = st.container(height=460, border=True, key="chatbox")
         with chat:
             for t in s.turns:
@@ -318,6 +384,7 @@ def render_report(s) -> None:
     if s.report is None:
         with st.spinner("Writing your report..."):
             run(coach.finish, s)
+        record_progress(s)
         st.session_state.scroll_top = True
         st.rerun()
     notices(s)
@@ -328,7 +395,7 @@ def render_report(s) -> None:
     left, right = st.columns([2, 3], gap="large")
     with left:
         st.markdown(f'<div class="tb-label">Final mark for {html.escape(s.topic)}</div>'
-                    f'<div class="tb-grade">{pts}<small>/100</small></div>'
+                    f'<div class="tb-grade" role="img" aria-label="Final mark: {pts} out of 100">{pts}<small>/100</small></div>'
                     f'<div class="tb-verdict">{title}</div>', unsafe_allow_html=True)
         counts = {k: sum(1 for c in s.concepts if c.status == k) for k in STATUS_LABELS}
         m = st.columns(4)

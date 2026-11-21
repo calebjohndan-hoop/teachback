@@ -50,6 +50,8 @@ class Session:
     bonus: list[dict] = field(default_factory=list)  # verified extra-credit insights
     notes: str = ""          # the user's own notes, if they uploaded any
     notes_name: str = ""
+    reteach: bool = False     # a follow-up lesson on concepts missed last time
+    blocked: int = 0          # messages ignored because they tried to game the marking
 
     @property
     def rounds_done(self) -> int:
@@ -60,6 +62,21 @@ class Session:
 
     def concept(self, cid: str) -> Concept | None:
         return next((c for c in self.concepts if c.id == cid), None)
+
+
+GAMING_PATTERNS = [
+    r"\bignore (all |any |the |your |previous |prior )*(rules|instructions|prompt|system)",
+    r"\b(mark|grade|set|give)\b.{0,30}\b(all|every|everything)\b.{0,20}\b(clear|correct|full marks?|100)",
+    r"\b(give|set) me\b.{0,15}\b(100|full marks?|a perfect score)",
+    r"\byou are (now )?(the )?(examiner|grader|system)\b",
+    r"\bnew instructions?\b",
+]
+
+
+def looks_like_gaming(text: str) -> bool:
+    """Spot messages that try to talk the examiner into free marks instead of teaching."""
+    low = text.lower()
+    return any(re.search(p, low) for p in GAMING_PATTERNS)
 
 
 def score(concepts: list[Concept]) -> int:
@@ -82,7 +99,8 @@ def verify_quote(quote: str, source: str, threshold: float = 0.85) -> bool:
     tolerating tiny copy differences). This is what stops the examiner model
     from inventing evidence the teacher never said."""
     q, s = _norm(quote), _norm(source)
-    if len(q) < 6 or not s:
+    # Short formulas like "V = IR" ("v ir") are real evidence; a single short word is not.
+    if not s or len(q) < 4 or (len(q) < 6 and len(q.split()) < 2):
         return False
     if q in s:
         return True

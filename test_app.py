@@ -21,6 +21,7 @@ def test_ui_end_to_end(monkeypatch):
     at.button(key="finish").click().run()
     assert not at.exception
     assert any("Marking scheme" in m.value for m in at.markdown)
+    assert any("/100" in m.value for m in at.sidebar.markdown)  # progress recorded
     at.button(key="reteach").click().run()
     assert not at.exception
     s = at.session_state["session"]
