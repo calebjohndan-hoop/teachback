@@ -19,6 +19,8 @@ Explaining something is the fastest way to find out whether you really understan
 - **Challenge mode:** hides the marking scheme so you have to work out what matters.
 - **Never goes down mid-lesson:** if Gemini is overloaded, the app switches models; if every model is down, it falls back to an offline backup brain and says so.
 
+![Marking scheme built from uploaded lecture notes, with a misconception and extra credit](docs/5_notes_and_extra_credit.png)
+
 | Picking a student | Mistake caught | Final report |
 | --- | --- | --- |
 | ![](docs/1_pick_topic_and_student.png) | ![](docs/3_misconception_caught.png) | ![](docs/4_final_report.png) |
