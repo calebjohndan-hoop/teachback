@@ -129,6 +129,17 @@ def test_bonus_needs_a_real_quote_and_never_changes_score():
     assert s.rejected == 1 and score(s.concepts) == before
 
 
+def test_quotes_joined_with_ellipsis_only_pass_if_every_piece_is_real():
+    from engine import verify_quote
+    src = ("That makes a bulb non-linear: its graph curves. "
+           "A normal resistor at a steady temperature is linear, so V = IR holds.")
+    assert verify_quote("makes a bulb non-linear ... a normal resistor at a steady temperature is linear", src)
+    assert verify_quote("bulb non-linear\u2026 resistor at a steady temperature", src)
+    assert not verify_quote("a normal resistor ... makes a bulb non-linear", src)        # wrong order
+    assert not verify_quote("makes a bulb non-linear ... superconductors are perfect", src)  # invented piece
+    assert not verify_quote("bulb ... linear ... holds ... graph", src)                   # glued single words
+
+
 def test_same_quote_never_earns_extra_credit_twice():
     from engine import apply_bonus
     s = make_session(("partial", 3))

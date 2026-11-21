@@ -94,7 +94,32 @@ def _norm(text: str) -> str:
     return " ".join(text.split())
 
 
+ELLIPSIS = re.compile(r"\.{3,}|\u2026|\[\s*\.\.\.\s*\]")
+
+
 def verify_quote(quote: str, source: str, threshold: float = 0.85) -> bool:
+    """True if the quote is really in what the teacher wrote. A quote joined with "..."
+    passes only if it has at most 3 pieces, each piece is 2+ words, each one is really
+    there, and the exact pieces appear in the same order. Scattered words can't be glued
+    into a sentence the teacher never said."""
+    pieces = [p for p in ELLIPSIS.split(quote) if _norm(p)]
+    if len(pieces) <= 1:
+        return _verify_one(quote, source, threshold)
+    if len(pieces) > 3 or any(len(_norm(p).split()) < 2 for p in pieces):
+        return False
+    s, pos = _norm(source), 0
+    for p in pieces:
+        if not _verify_one(p, source, threshold):
+            return False
+        i = s.find(_norm(p))
+        if i != -1:  # exact piece: must come after the previous exact piece
+            if i < pos:
+                return False
+            pos = i + len(_norm(p))
+    return True
+
+
+def _verify_one(quote: str, source: str, threshold: float = 0.85) -> bool:
     """True if `quote` really appears in `source` (ignoring case/punctuation,
     tolerating tiny copy differences). This is what stops the examiner model
     from inventing evidence the teacher never said."""

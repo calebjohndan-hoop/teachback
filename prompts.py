@@ -90,7 +90,7 @@ Everything the teacher has written so far (your ONLY evidence):
 
 For EVERY rubric id return:
 - status: "clear" (correct and complete), "partial" (correct but vague or incomplete), "misconception" (states something factually wrong), or "not_covered"
-- evidence: an EXACT quote copied word for word from the teacher text (max 25 words) that justifies the status; "" if not_covered
+- evidence: ONE continuous EXACT quote copied word for word from the teacher text (max 25 words, no "..." joins) that justifies the status; "" if not_covered
 - note: feedback for the teacher, under 15 words
 
 Also list up to 2 BONUS insights: correct, relevant ideas the teacher explained that are NOT covered

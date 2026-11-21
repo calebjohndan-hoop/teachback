@@ -144,11 +144,20 @@ def teacher_turn(llm, session: Session, message: str) -> None:
         session.turns.pop()  # let the user resend the same message
         raise
     before = session.rejected
+    claimed = {str(i.get("id")): i.get("evidence") for i in result.get("concepts", []) if isinstance(i, dict)} \
+        if isinstance(result, dict) else {}
     changes = apply_evaluation(session, result)
     verdicts = {str(i.get("id")): i.get("status") for i in result.get("concepts", []) if isinstance(i, dict)} \
         if isinstance(result, dict) else {}
     log.warning("examiner verdicts %s | applied %s | rejected quotes %d", verdicts, changes,
                 session.rejected - before)
+    if session.rejected > before:
+        applied = {cid for cid, _, _ in changes}
+        for cid, ev in claimed.items():
+            if ev and cid not in applied and verdicts.get(cid) not in ("not_covered", None):
+                c = session.concept(cid)
+                if c and c.status != verdicts.get(cid):
+                    log.warning("rejected quote for %s: %r", cid, str(ev)[:200])
     if check_finished(session):
         return
     target = pick_target(session.concepts)
