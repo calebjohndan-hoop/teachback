@@ -2,6 +2,7 @@
 the deterministic rules in engine.py."""
 from __future__ import annotations
 
+import logging
 import re
 
 import prompts as P
@@ -9,6 +10,8 @@ from engine import (
     FOCUS_MODE, Concept, Session, Turn, apply_evaluation, check_finished, looks_like_gaming, pick_target,
 )
 from llm import LLMError
+
+log = logging.getLogger("teachback")
 
 MAX_MESSAGE = 1500
 
@@ -140,7 +143,12 @@ def teacher_turn(llm, session: Session, message: str) -> None:
     except LLMError:
         session.turns.pop()  # let the user resend the same message
         raise
-    apply_evaluation(session, result)
+    before = session.rejected
+    changes = apply_evaluation(session, result)
+    verdicts = {str(i.get("id")): i.get("status") for i in result.get("concepts", []) if isinstance(i, dict)} \
+        if isinstance(result, dict) else {}
+    log.warning("examiner verdicts %s | applied %s | rejected quotes %d", verdicts, changes,
+                session.rejected - before)
     if check_finished(session):
         return
     target = pick_target(session.concepts)

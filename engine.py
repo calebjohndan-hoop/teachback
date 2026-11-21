@@ -159,6 +159,7 @@ def apply_bonus(session: Session, result: dict) -> list[dict]:
     teacher = session.teacher_text()
     added = []
     seen = {_norm(b["insight"]) for b in session.bonus}
+    seen_quotes = [_norm(b["evidence"]) for b in session.bonus]
     for item in items if isinstance(items, list) else []:
         if len(session.bonus) >= MAX_BONUS or not isinstance(item, dict):
             break
@@ -166,6 +167,9 @@ def apply_bonus(session: Session, result: dict) -> list[dict]:
         evidence = " ".join(str(item.get("evidence", "")).split())
         if not insight or _norm(insight) in seen:
             continue
+        q = _norm(evidence)
+        if q and any(q in old or old in q for old in seen_quotes):
+            continue  # same sentence already earned extra credit; don't count it twice
         if not verify_quote(evidence, teacher):
             session.rejected += 1
             continue
@@ -173,6 +177,7 @@ def apply_bonus(session: Session, result: dict) -> list[dict]:
         entry = {"insight": insight, "evidence": evidence}
         session.bonus.append(entry)
         seen.add(_norm(insight))
+        seen_quotes.append(q)
         added.append(entry)
     return added
 

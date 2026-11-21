@@ -129,6 +129,15 @@ def test_bonus_needs_a_real_quote_and_never_changes_score():
     assert s.rejected == 1 and score(s.concepts) == before
 
 
+def test_same_quote_never_earns_extra_credit_twice():
+    from engine import apply_bonus
+    s = make_session(("partial", 3))
+    s.turns.append(Turn("teacher", "Current is charge flowing, like water flowing in a pipe."))
+    apply_bonus(s, {"bonus": [{"insight": "Analogy using water flowing in a pipe", "evidence": "like water flowing in a pipe"}]})
+    apply_bonus(s, {"bonus": [{"insight": "Water analogy for current flow", "evidence": "like water flowing in a pipe"}]})
+    assert len(s.bonus) == 1
+
+
 def test_reteach_only_weak_concepts_with_fresh_marks():
     llm = MockLLM()
     s = coach.new_session(llm, "Ohm's law", "kid", "college", 4)

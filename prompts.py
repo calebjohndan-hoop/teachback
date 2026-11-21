@@ -75,6 +75,9 @@ def evaluate_prompt(session: Session) -> tuple[str, str]:
         "You are a strict but fair examiner grading how well a TEACHER explained a topic to a student. "
         "You judge only what the teacher actually wrote. Respond with JSON only. " + GUARD
     )
+    already = ""
+    if session.bonus:
+        already = "Already awarded, do NOT list these again or reword them: " + "; ".join(b["insight"] for b in session.bonus)
     prompt = f"""Topic: {session.topic}
 
 Rubric:
@@ -93,6 +96,7 @@ For EVERY rubric id return:
 Also list up to 2 BONUS insights: correct, relevant ideas the teacher explained that are NOT covered
 by any rubric item (a good analogy, an edge case, a real-world use). Each needs an exact quote too.
 Leave bonus empty if there are none; never invent one.
+{already}
 
 Return JSON: {{"concepts": [{{"id": "c1", "status": "partial", "evidence": "...", "note": "..."}}],
  "bonus": [{{"insight": "under 10 words", "evidence": "exact quote"}}]}}"""
