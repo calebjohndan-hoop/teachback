@@ -3,7 +3,11 @@ brain (mock.py) can stand in for Gemini with the same interface."""
 from __future__ import annotations
 
 import json
+import logging
 import re
+import time
+
+log = logging.getLogger("teachback")
 
 DEFAULT_MODEL = "gemini-flash-latest"
 
@@ -52,24 +56,29 @@ class GeminiLLM:
         from google.genai import types
 
         self._types = types
-        self._client = genai.Client(api_key=api_key)
-        self.model = self._resolve(model or DEFAULT_MODEL)
+        self._client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=45_000))
+        wanted = model or DEFAULT_MODEL
+        self.model = _RESOLVED.get(wanted, wanted)
+        self._wanted = wanted
 
-    def _resolve(self, wanted: str) -> str:
-        if wanted in _RESOLVED:
-            return _RESOLVED[wanted]
+    def _resolve(self) -> bool:
+        """Called only when the model is missing: switch to one that exists."""
         try:
             names = []
-            for m in self._client.models.list():
+            for m in self._client.models.list(config={"page_size": 100}):
                 actions = getattr(m, "supported_actions", None) or []
                 if actions and "generateContent" not in actions:
                     continue
                 names.append((m.name or "").removeprefix("models/"))
-            chosen = pick_model(names, wanted) if names else wanted
-        except Exception:  # noqa: BLE001 - listing is best effort
-            return wanted
-        _RESOLVED[wanted] = chosen
-        return chosen
+        except Exception as e:  # noqa: BLE001
+            log.warning("model list failed: %s", e)
+            return False
+        chosen = pick_model(names, self.model)
+        log.warning("model %s unavailable, switching to %s", self.model, chosen)
+        if chosen == self.model:
+            return False
+        self.model = _RESOLVED[self._wanted] = chosen
+        return True
 
     def _call(self, system: str, prompt: str, temperature: float, as_json: bool) -> str:
         config = self._types.GenerateContentConfig(
@@ -77,7 +86,16 @@ class GeminiLLM:
             temperature=temperature,
             response_mime_type="application/json" if as_json else "text/plain",
         )
-        resp = self._client.models.generate_content(model=self.model, contents=prompt, config=config)
+        t0 = time.time()
+        try:
+            resp = self._client.models.generate_content(model=self.model, contents=prompt, config=config)
+        except Exception as e:  # noqa: BLE001
+            if ("NOT_FOUND" in str(e) or "404" in str(e)) and self._resolve():
+                resp = self._client.models.generate_content(model=self.model, contents=prompt, config=config)
+            else:
+                log.warning("gemini %s failed after %.1fs: %s", self.model, time.time() - t0, e)
+                raise
+        log.warning("gemini %s ok in %.1fs", self.model, time.time() - t0)
         return resp.text or ""
 
     def json(self, task: str, system: str, prompt: str, context: dict | None = None, temperature: float = 0.2) -> dict:
